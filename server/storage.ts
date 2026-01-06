@@ -1,38 +1,88 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import {
+  User,
+  InsertUser,
+  Vehicle,
+  InsertVehicle,
+  users,
+  vehicles,
+} from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
+  getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUserPassword(id: number, password: string): Promise<void>;
+  getAllUsers(): Promise<User[]>;
+
+  createVehicle(vehicle: InsertVehicle): Promise<Vehicle>;
+  getVehicle(id: number): Promise<Vehicle | undefined>;
+  getVehiclesByUser(userId: number): Promise<Vehicle[]>;
+  getAllVehicles(): Promise<Vehicle[]>; // For admin? Or just all
+  updateVehicle(id: number, vehicle: Partial<InsertVehicle>): Promise<Vehicle>;
+  updateVehicleTelemetry(id: number, lat: number, lng: number): Promise<Vehicle>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
-  }
-
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
+  }
+  
+  async updateUserPassword(id: number, password: string): Promise<void> {
+    await db.update(users).set({ password }).where(eq(users.id, id));
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async createVehicle(vehicle: InsertVehicle): Promise<Vehicle> {
+    const [newVehicle] = await db.insert(vehicles).values(vehicle).returning();
+    return newVehicle;
+  }
+
+  async getVehicle(id: number): Promise<Vehicle | undefined> {
+    const [vehicle] = await db.select().from(vehicles).where(eq(vehicles.id, id));
+    return vehicle;
+  }
+
+  async getVehiclesByUser(userId: number): Promise<Vehicle[]> {
+    return await db.select().from(vehicles).where(eq(vehicles.userId, userId));
+  }
+
+  async getAllVehicles(): Promise<Vehicle[]> {
+    return await db.select().from(vehicles);
+  }
+
+  async updateVehicle(id: number, updates: Partial<InsertVehicle>): Promise<Vehicle> {
+    const [vehicle] = await db
+      .update(vehicles)
+      .set(updates)
+      .where(eq(vehicles.id, id))
+      .returning();
+    return vehicle;
+  }
+
+  async updateVehicleTelemetry(id: number, lat: number, lng: number): Promise<Vehicle> {
+    const [vehicle] = await db
+      .update(vehicles)
+      .set({ currentLat: lat, currentLng: lng, lastSync: new Date() })
+      .where(eq(vehicles.id, id))
+      .returning();
+    return vehicle;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
