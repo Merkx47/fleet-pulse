@@ -30,12 +30,12 @@ export const standardResponseSchema = z.object({
   data: z.any().optional(),
 });
 
-// API Contract - calls FastAPI backend directly
+// API Contract - calls FastAPI backend directly (no /api prefix on Render backend)
 export const api = {
   auth: {
     login: {
       method: 'POST' as const,
-      path: `${API_BASE}/api/login`,
+      path: `${API_BASE}/login`,
       input: z.object({
         email: z.string().email(),
         password: z.string(),
@@ -47,7 +47,7 @@ export const api = {
     },
     register: {
       method: 'POST' as const,
-      path: `${API_BASE}/api/register`,
+      path: `${API_BASE}/register`,
       input: z.object({
         email: z.string().email(),
         password: z.string(),
@@ -60,14 +60,14 @@ export const api = {
     },
     logout: {
       method: 'POST' as const,
-      path: `${API_BASE}/api/logout`,
+      path: `${API_BASE}/logout`,
       responses: {
         200: standardResponseSchema,
       },
     },
     user: {
       method: 'GET' as const,
-      path: `${API_BASE}/api/me`,
+      path: `${API_BASE}/me`,
       responses: {
         200: standardResponseSchema,
         401: errorSchemas.unauthorized,
@@ -78,7 +78,7 @@ export const api = {
     users: {
       get: {
         method: 'GET' as const,
-        path: `${API_BASE}/api/admin/user/:email`,
+        path: `${API_BASE}/admin/user/:email`,
         responses: {
           200: standardResponseSchema,
           404: errorSchemas.notFound,
@@ -86,14 +86,14 @@ export const api = {
       },
       getVehicles: {
         method: 'GET' as const,
-        path: `${API_BASE}/api/admin/user/:email/vehicles`,
+        path: `${API_BASE}/admin/user/:email/vehicles`,
         responses: {
           200: standardResponseSchema,
         },
       },
       resetPassword: {
         method: 'POST' as const,
-        path: `${API_BASE}/api/admin/reset-password`,
+        path: `${API_BASE}/admin/reset-password`,
         input: z.object({
           email: z.string().email(),
           new_password: z.string(),
@@ -104,7 +104,7 @@ export const api = {
       },
       registerVehicle: {
         method: 'POST' as const,
-        path: `${API_BASE}/api/admin/register-vehicle`,
+        path: `${API_BASE}/admin/register-vehicle`,
         input: z.object({
           user_id: z.number(),
           sensor_imei: z.string(),
@@ -123,7 +123,7 @@ export const api = {
       },
       updateVehicle: {
         method: 'PUT' as const,
-        path: `${API_BASE}/api/admin/vehicle/:vehicle_id`,
+        path: `${API_BASE}/admin/vehicle/:vehicle_id`,
         input: z.object({
           brand: z.string().optional(),
           model: z.string().optional(),
@@ -143,14 +143,14 @@ export const api = {
   vehicles: {
     list: {
       method: 'GET' as const,
-      path: `${API_BASE}/api/vehicles`,
+      path: `${API_BASE}/vehicles`,
       responses: {
         200: standardResponseSchema,
       },
     },
     getData: {
       method: 'GET' as const,
-      path: `${API_BASE}/api/vehicle/:vehicle_sensor_imei/data`,
+      path: `${API_BASE}/vehicle/:vehicle_sensor_imei/data`,
       responses: {
         200: standardResponseSchema,
         404: errorSchemas.notFound,
@@ -158,7 +158,7 @@ export const api = {
     },
     sync: {
       method: 'POST' as const,
-      path: `${API_BASE}/api/sync`,
+      path: `${API_BASE}/sync`,
       responses: {
         200: standardResponseSchema,
       },
