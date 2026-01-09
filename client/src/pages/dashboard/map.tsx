@@ -2,7 +2,8 @@ import { useVehicles } from "@/hooks/use-vehicles";
 import { DashboardLayout } from "@/components/layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MapPin, Truck, Navigation, Clock, Activity, Circle } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Loader2, MapPin, Truck, Navigation, Clock, Activity, Circle, Fuel, Gauge, Battery, AlertTriangle, ThermometerSun, Zap, X } from "lucide-react";
 import { VehicleMap, type VehicleWithLocation } from "@/components/vehicle-map";
 import { useState, useEffect } from "react";
 import { api, buildUrl } from "@shared/routes";
@@ -58,15 +59,18 @@ function useVehiclesWithLocation(vehicles: { sensor_imei: string; vehicle_vin: s
   return { vehiclesWithLocation, isLoading };
 }
 
-function VehicleListItem({ vehicle }: { vehicle: VehicleWithLocation }) {
+function VehicleListItem({ vehicle, onClick }: { vehicle: VehicleWithLocation; onClick: () => void }) {
   const hasLocation = vehicle["position.latitude"] && vehicle["position.longitude"];
-  const isMoving = vehicle.vehicle_state === "MOVING";
+  const isMoving = vehicle.vehicle_state === "MOVING" || vehicle.vehicle_state === "DRIVING";
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card hover:border-border transition-colors group">
+    <div
+      onClick={onClick}
+      className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-card hover:border-border hover:bg-accent/50 transition-colors group cursor-pointer"
+    >
       <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
         hasLocation
-          ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100'
+          ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400'
           : 'bg-muted/50 text-muted-foreground'
       }`}>
         <Truck className="w-4 h-4" />
@@ -79,15 +83,15 @@ function VehicleListItem({ vehicle }: { vehicle: VehicleWithLocation }) {
         </p>
         <div className="flex items-center gap-2 mt-0.5">
           <p className="text-[11px] text-muted-foreground truncate">
-            {vehicle.vehicle_plate_number || vehicle.sensor_imei?.slice(-8)}
+            {vehicle.vehicle_plate_number || vehicle.vehicle_vin?.slice(-8)}
           </p>
           {vehicle.vehicle_state && (
             <Badge
               variant="secondary"
               className={`text-[9px] px-1.5 py-0 h-4 ${
                 isMoving
-                  ? 'bg-amber-50 text-amber-700 border-amber-200/50'
-                  : 'bg-sky-50 text-sky-700 border-sky-200/50'
+                  ? 'bg-amber-50 text-amber-700 border-amber-200/50 dark:bg-amber-900/30 dark:text-amber-400'
+                  : 'bg-sky-50 text-sky-700 border-sky-200/50 dark:bg-sky-900/30 dark:text-sky-400'
               }`}
             >
               {vehicle.vehicle_state}
@@ -97,7 +101,7 @@ function VehicleListItem({ vehicle }: { vehicle: VehicleWithLocation }) {
       </div>
       <div className="shrink-0">
         {hasLocation ? (
-          <div className="flex items-center gap-1 text-emerald-600">
+          <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
             <Circle className="w-2 h-2 fill-current animate-pulse" />
           </div>
         ) : (
@@ -108,10 +112,253 @@ function VehicleListItem({ vehicle }: { vehicle: VehicleWithLocation }) {
   );
 }
 
+// Vehicle Detail Sheet Component
+function VehicleDetailSheet({ vehicle, open, onClose }: { vehicle: VehicleWithLocation | null; open: boolean; onClose: () => void }) {
+  if (!vehicle) return null;
+
+  const isMoving = vehicle.vehicle_state === "MOVING" || vehicle.vehicle_state === "DRIVING";
+
+  // Parse faults if available
+  let faults: Record<string, string> = {};
+  if (vehicle.faults) {
+    try {
+      faults = JSON.parse(vehicle.faults);
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetHeader className="pb-4 border-b">
+          <div className="flex items-center justify-between">
+            <SheetTitle className="text-xl">
+              {vehicle.vehicle_brand && vehicle.vehicle_model
+                ? `${vehicle.vehicle_brand} ${vehicle.vehicle_model}`
+                : 'Vehicle Details'}
+            </SheetTitle>
+            <Badge
+              variant="secondary"
+              className={`${
+                isMoving
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+              }`}
+            >
+              {vehicle.vehicle_state || 'Unknown'}
+            </Badge>
+          </div>
+        </SheetHeader>
+
+        <div className="py-6 space-y-6">
+          {/* Basic Info */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Vehicle Information</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {vehicle.vehicle_plate_number && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Plate Number</p>
+                  <p className="font-medium">{vehicle.vehicle_plate_number}</p>
+                </div>
+              )}
+              {vehicle.vehicle_vin && (
+                <div>
+                  <p className="text-xs text-muted-foreground">VIN</p>
+                  <p className="font-medium text-sm">{vehicle.vehicle_vin}</p>
+                </div>
+              )}
+              {vehicle.vehicle_year && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Year</p>
+                  <p className="font-medium">{vehicle.vehicle_year}</p>
+                </div>
+              )}
+              {vehicle.vehicle_color && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Color</p>
+                  <p className="font-medium">{vehicle.vehicle_color}</p>
+                </div>
+              )}
+              {vehicle.vehicle_fuel_type && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Fuel Type</p>
+                  <p className="font-medium">{vehicle.vehicle_fuel_type}</p>
+                </div>
+              )}
+              {vehicle.vehicle_transmission && (
+                <div>
+                  <p className="text-xs text-muted-foreground">Transmission</p>
+                  <p className="font-medium">{vehicle.vehicle_transmission}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Telemetry */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Live Telemetry</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {vehicle["can.fuel.level"] !== undefined && (
+                <Card className="border-border/50">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                      <Fuel className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Fuel Level</p>
+                      <p className="font-semibold text-lg">{vehicle["can.fuel.level"]}%</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {vehicle["can.vehicle.mileage"] !== undefined && (
+                <Card className="border-border/50">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                      <Gauge className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Mileage</p>
+                      <p className="font-semibold">{vehicle["can.vehicle.mileage"].toLocaleString()} km</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {vehicle.battery_health && (
+                <Card className="border-border/50">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                      vehicle.battery_health === 'GOOD'
+                        ? 'bg-green-50 dark:bg-green-900/30'
+                        : 'bg-amber-50 dark:bg-amber-900/30'
+                    }`}>
+                      <Battery className={`w-5 h-5 ${
+                        vehicle.battery_health === 'GOOD'
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Battery</p>
+                      <p className={`font-semibold ${
+                        vehicle.battery_health === 'GOOD' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
+                      }`}>{vehicle.battery_health}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {vehicle.engine_load && (
+                <Card className="border-border/50">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+                      <Zap className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Engine Load</p>
+                      <p className="font-semibold">{vehicle.engine_load}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+
+          {/* Status Indicators */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Status</h3>
+            <div className="space-y-2">
+              {vehicle.speeding_status && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <span className="text-sm">Speeding Status</span>
+                  <Badge variant={vehicle.speeding_status === 'BELOW LIMIT' ? 'default' : 'destructive'}>
+                    {vehicle.speeding_status}
+                  </Badge>
+                </div>
+              )}
+              {vehicle.ecu_status && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <span className="text-sm">ECU Status</span>
+                  <Badge variant={vehicle.ecu_status === 'STABLE' ? 'default' : 'secondary'}>
+                    {vehicle.ecu_status}
+                  </Badge>
+                </div>
+              )}
+              {vehicle.engine_stability && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <span className="text-sm">Engine Stability</span>
+                  <Badge variant={vehicle.engine_stability === 'OK' ? 'default' : 'secondary'}>
+                    {vehicle.engine_stability}
+                  </Badge>
+                </div>
+              )}
+              {vehicle.overheating_risk && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <span className="text-sm">Overheating Risk</span>
+                  <Badge variant={vehicle.overheating_risk === 'LOW' ? 'default' : 'destructive'}>
+                    {vehicle.overheating_risk}
+                  </Badge>
+                </div>
+              )}
+              {vehicle.charging_status && (
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <span className="text-sm">Charging Status</span>
+                  <Badge variant="secondary">{vehicle.charging_status}</Badge>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Faults */}
+          {Object.keys(faults).length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                Active Faults ({Object.keys(faults).length})
+              </h3>
+              <div className="space-y-2">
+                {Object.entries(faults).map(([code, description]) => (
+                  <div key={code} className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                    <p className="font-mono text-sm font-semibold text-amber-700 dark:text-amber-400">{code}</p>
+                    <p className="text-sm text-amber-600 dark:text-amber-300 mt-1">{description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Location */}
+          {vehicle["position.latitude"] && vehicle["position.longitude"] && (
+            <div>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Location</h3>
+              <div className="p-3 rounded-lg bg-muted/30">
+                <p className="text-sm font-mono">
+                  {vehicle["position.latitude"].toFixed(6)}, {vehicle["position.longitude"].toFixed(6)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Last Update */}
+          {vehicle.timestamp && (
+            <div className="pt-4 border-t">
+              <p className="text-xs text-muted-foreground">
+                Last Updated: {new Date(vehicle.timestamp).toLocaleString()}
+              </p>
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 export default function MapPage() {
   const { data: vehicles, isLoading: isLoadingVehicles } = useVehicles();
   const { vehiclesWithLocation, isLoading: isLoadingLocations } = useVehiclesWithLocation(vehicles);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [selectedVehicle, setSelectedVehicle] = useState<VehicleWithLocation | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   useEffect(() => {
     if (vehiclesWithLocation.length > 0) {
@@ -119,12 +366,17 @@ export default function MapPage() {
     }
   }, [vehiclesWithLocation]);
 
+  const handleVehicleClick = (vehicle: VehicleWithLocation) => {
+    setSelectedVehicle(vehicle);
+    setIsDetailOpen(true);
+  };
+
   const isLoading = isLoadingVehicles || isLoadingLocations;
   const vehiclesWithGPS = vehiclesWithLocation.filter(
     v => v["position.latitude"] && v["position.longitude"]
   );
   const parkedCount = vehiclesWithLocation.filter(v => v.vehicle_state === "PARKED").length;
-  const movingCount = vehiclesWithLocation.filter(v => v.vehicle_state === "MOVING").length;
+  const movingCount = vehiclesWithLocation.filter(v => v.vehicle_state === "MOVING" || v.vehicle_state === "DRIVING").length;
 
   if (isLoadingVehicles) {
     return (
@@ -248,7 +500,11 @@ export default function MapPage() {
                 <div className="space-y-2 max-h-[calc(100vh-420px)] min-h-[300px] overflow-y-auto scrollbar-thin pr-1">
                   {vehiclesWithLocation.length > 0 ? (
                     vehiclesWithLocation.map((vehicle) => (
-                      <VehicleListItem key={vehicle.sensor_imei} vehicle={vehicle} />
+                      <VehicleListItem
+                        key={vehicle.vehicle_vin || vehicle.sensor_imei}
+                        vehicle={vehicle}
+                        onClick={() => handleVehicleClick(vehicle)}
+                      />
                     ))
                   ) : isLoading ? (
                     <div className="flex items-center justify-center py-12">
@@ -266,6 +522,13 @@ export default function MapPage() {
           </div>
         </div>
       </div>
+
+      {/* Vehicle Detail Sheet */}
+      <VehicleDetailSheet
+        vehicle={selectedVehicle}
+        open={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+      />
     </DashboardLayout>
   );
 }

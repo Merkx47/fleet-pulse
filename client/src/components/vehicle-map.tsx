@@ -16,7 +16,7 @@ const DefaultIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Vehicle data from the API (matches /api/vehicle/:imei/data response)
+// Vehicle data from the API (matches /vehicle/:imei/data response)
 export interface VehicleWithLocation {
   id?: number;
   sensor_imei: string;
@@ -26,11 +26,26 @@ export interface VehicleWithLocation {
   vehicle_year?: number;
   vehicle_color?: string;
   vehicle_plate_number?: string;
+  vehicle_fuel_type?: string;
+  vehicle_transmission?: string;
   is_active?: boolean;
   timestamp?: string;
   vehicle_state?: string;
   "position.latitude"?: number;
   "position.longitude"?: number;
+  // Telemetry data
+  "can.fuel.level"?: number;
+  "can.mil.mileage"?: number;
+  "can.vehicle.mileage"?: number;
+  battery_health?: string;
+  charging_status?: string;
+  ecu_status?: string;
+  overheating_risk?: string;
+  intake_air_temperature?: string;
+  engine_load?: string;
+  engine_stability?: string;
+  speeding_status?: string;
+  faults?: string;
 }
 
 interface VehicleMapProps {
@@ -86,31 +101,93 @@ export function VehicleMap({
 
         {activeVehicles.map((vehicle) => (
           <Marker
-            key={vehicle.sensor_imei}
+            key={vehicle.vehicle_vin || vehicle.sensor_imei}
             position={[vehicle["position.latitude"]!, vehicle["position.longitude"]!]}
           >
-            <Popup className="font-sans">
-              <div className="p-1">
-                <h3 className="font-bold text-sm mb-1">
-                  {vehicle.vehicle_brand && vehicle.vehicle_model
-                    ? `${vehicle.vehicle_brand} ${vehicle.vehicle_model}`
-                    : 'Vehicle'}
-                </h3>
-                {vehicle.vehicle_plate_number && (
-                  <p className="text-xs text-gray-600 mb-1">Plate: {vehicle.vehicle_plate_number}</p>
-                )}
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`w-2 h-2 rounded-full ${vehicle.is_active ? 'bg-green-500' : 'bg-gray-300'}`}></span>
-                  <span className="text-xs capitalize">{vehicle.is_active ? 'Active' : 'Inactive'}</span>
+            <Popup className="font-sans" maxWidth={300}>
+              <div className="p-1 min-w-[220px]">
+                {/* Vehicle Name & Status */}
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-sm">
+                    {vehicle.vehicle_brand && vehicle.vehicle_model
+                      ? `${vehicle.vehicle_brand} ${vehicle.vehicle_model}`
+                      : 'Vehicle'}
+                  </h3>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                    vehicle.vehicle_state === 'DRIVING' || vehicle.vehicle_state === 'MOVING'
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {vehicle.vehicle_state || 'Unknown'}
+                  </span>
                 </div>
-                {vehicle.vehicle_state && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    State: <span className="capitalize">{vehicle.vehicle_state.toLowerCase()}</span>
-                  </p>
-                )}
+
+                {/* Basic Info */}
+                <div className="space-y-1 text-xs border-b border-gray-200 pb-2 mb-2">
+                  {vehicle.vehicle_plate_number && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Plate:</span> {vehicle.vehicle_plate_number}
+                    </p>
+                  )}
+                  {vehicle.vehicle_vin && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">VIN:</span> {vehicle.vehicle_vin}
+                    </p>
+                  )}
+                  {vehicle.vehicle_color && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Color:</span> {vehicle.vehicle_color}
+                    </p>
+                  )}
+                </div>
+
+                {/* Telemetry Data */}
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                  {vehicle["can.fuel.level"] !== undefined && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Fuel:</span> {vehicle["can.fuel.level"]}%
+                    </p>
+                  )}
+                  {vehicle["can.vehicle.mileage"] !== undefined && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Mileage:</span> {vehicle["can.vehicle.mileage"].toLocaleString()} km
+                    </p>
+                  )}
+                  {vehicle.battery_health && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Battery:</span>{' '}
+                      <span className={vehicle.battery_health === 'GOOD' ? 'text-green-600' : 'text-amber-600'}>
+                        {vehicle.battery_health}
+                      </span>
+                    </p>
+                  )}
+                  {vehicle.engine_load && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Engine:</span> {vehicle.engine_load}
+                    </p>
+                  )}
+                  {vehicle.speeding_status && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">Speed:</span>{' '}
+                      <span className={vehicle.speeding_status === 'BELOW LIMIT' ? 'text-green-600' : 'text-red-600'}>
+                        {vehicle.speeding_status}
+                      </span>
+                    </p>
+                  )}
+                  {vehicle.ecu_status && (
+                    <p className="text-gray-600">
+                      <span className="font-medium">ECU:</span>{' '}
+                      <span className={vehicle.ecu_status === 'STABLE' ? 'text-green-600' : 'text-amber-600'}>
+                        {vehicle.ecu_status}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Timestamp */}
                 {vehicle.timestamp && (
-                  <p className="text-[10px] text-gray-400 mt-1">
-                    Last update: {new Date(vehicle.timestamp).toLocaleString()}
+                  <p className="text-[10px] text-gray-400 mt-2 pt-2 border-t border-gray-200">
+                    Updated: {new Date(vehicle.timestamp).toLocaleString()}
                   </p>
                 )}
               </div>
