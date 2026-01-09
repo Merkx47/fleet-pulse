@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin, Truck, Navigation, Clock, Activity, Circle } from "lucide-react";
 import { VehicleMap, type VehicleWithLocation } from "@/components/vehicle-map";
 import { useState, useEffect } from "react";
+import { api, buildUrl } from "@shared/routes";
 
 // Hook to fetch location data for all vehicles
 function useVehiclesWithLocation(vehicles: { sensor_imei: string; vehicle_vin: string }[] | undefined) {
@@ -24,7 +25,8 @@ function useVehiclesWithLocation(vehicles: { sensor_imei: string; vehicle_vin: s
         const results = await Promise.all(
           vehicles.map(async (vehicle) => {
             try {
-              const res = await fetch(`/api/vehicle/${vehicle.sensor_imei}/data`, {
+              const url = buildUrl(api.vehicles.getData.path, { vehicle_sensor_imei: vehicle.sensor_imei });
+              const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` },
               });
               if (!res.ok) return null;
