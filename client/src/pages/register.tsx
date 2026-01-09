@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "wouter";
-import { Loader2, Truck } from "lucide-react";
+import { Loader2, Truck, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 
 // Schema matching FastAPI backend
 const registerSchema = z.object({
@@ -22,6 +23,7 @@ const registerSchema = z.object({
 
 export default function RegisterPage() {
   const { mutate: register, isPending, error } = useRegister();
+  const { theme, toggleTheme } = useTheme();
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -39,7 +41,20 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary/30 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-secondary/30 p-4 relative">
+      {/* Dark mode toggle */}
+      <button
+        onClick={toggleTheme}
+        className="absolute top-4 right-4 p-2 rounded-lg bg-background border border-border hover:bg-accent transition-colors"
+        aria-label="Toggle dark mode"
+      >
+        {theme === 'dark' ? (
+          <Sun className="w-5 h-5 text-foreground" />
+        ) : (
+          <Moon className="w-5 h-5 text-foreground" />
+        )}
+      </button>
+
       <div className="w-full max-w-md space-y-8">
         <div className="flex flex-col items-center text-center">
           <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 text-primary">

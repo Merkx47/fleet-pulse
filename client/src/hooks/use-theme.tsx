@@ -12,15 +12,9 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    // Check localStorage first
+    // Check localStorage first, default to light if not set
     const stored = localStorage.getItem("fleetpulse_theme") as Theme | null;
-    if (stored) return stored;
-
-    // Check system preference
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      return "dark";
-    }
-    return "light";
+    return stored || "light";
   });
 
   useEffect(() => {

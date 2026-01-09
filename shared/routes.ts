@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { insertUserSchema, insertVehicleSchema, users, vehicles } from './schema';
 
+// API Base URL - use Render backend directly for deployed version
+const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+  ? 'https://fleetpulse-io7s.onrender.com'
+  : '';
+
 // Shared Error Schemas
 export const errorSchemas = {
   validation: z.object({
@@ -25,12 +30,12 @@ export const standardResponseSchema = z.object({
   data: z.any().optional(),
 });
 
-// API Contract - proxied through local /api/* to FastAPI backend
+// API Contract - calls FastAPI backend directly
 export const api = {
   auth: {
     login: {
       method: 'POST' as const,
-      path: '/api/login',
+      path: `${API_BASE}/api/login`,
       input: z.object({
         email: z.string().email(),
         password: z.string(),
@@ -42,7 +47,7 @@ export const api = {
     },
     register: {
       method: 'POST' as const,
-      path: '/api/register',
+      path: `${API_BASE}/api/register`,
       input: z.object({
         email: z.string().email(),
         password: z.string(),
@@ -55,14 +60,14 @@ export const api = {
     },
     logout: {
       method: 'POST' as const,
-      path: '/api/logout',
+      path: `${API_BASE}/api/logout`,
       responses: {
         200: standardResponseSchema,
       },
     },
     user: {
       method: 'GET' as const,
-      path: '/api/me',
+      path: `${API_BASE}/api/me`,
       responses: {
         200: standardResponseSchema,
         401: errorSchemas.unauthorized,
@@ -73,7 +78,7 @@ export const api = {
     users: {
       get: {
         method: 'GET' as const,
-        path: '/api/admin/user/:email',
+        path: `${API_BASE}/api/admin/user/:email`,
         responses: {
           200: standardResponseSchema,
           404: errorSchemas.notFound,
@@ -81,14 +86,14 @@ export const api = {
       },
       getVehicles: {
         method: 'GET' as const,
-        path: '/api/admin/user/:email/vehicles',
+        path: `${API_BASE}/api/admin/user/:email/vehicles`,
         responses: {
           200: standardResponseSchema,
         },
       },
       resetPassword: {
         method: 'POST' as const,
-        path: '/api/admin/reset-password',
+        path: `${API_BASE}/api/admin/reset-password`,
         input: z.object({
           email: z.string().email(),
           new_password: z.string(),
@@ -99,7 +104,7 @@ export const api = {
       },
       registerVehicle: {
         method: 'POST' as const,
-        path: '/api/admin/register-vehicle',
+        path: `${API_BASE}/api/admin/register-vehicle`,
         input: z.object({
           user_id: z.number(),
           sensor_imei: z.string(),
@@ -118,7 +123,7 @@ export const api = {
       },
       updateVehicle: {
         method: 'PUT' as const,
-        path: '/api/admin/vehicle/:vehicle_id',
+        path: `${API_BASE}/api/admin/vehicle/:vehicle_id`,
         input: z.object({
           brand: z.string().optional(),
           model: z.string().optional(),
@@ -138,14 +143,14 @@ export const api = {
   vehicles: {
     list: {
       method: 'GET' as const,
-      path: '/api/vehicles',
+      path: `${API_BASE}/api/vehicles`,
       responses: {
         200: standardResponseSchema,
       },
     },
     getData: {
       method: 'GET' as const,
-      path: '/api/vehicle/:vehicle_sensor_imei/data',
+      path: `${API_BASE}/api/vehicle/:vehicle_sensor_imei/data`,
       responses: {
         200: standardResponseSchema,
         404: errorSchemas.notFound,
@@ -153,7 +158,7 @@ export const api = {
     },
     sync: {
       method: 'POST' as const,
-      path: '/api/sync',
+      path: `${API_BASE}/api/sync`,
       responses: {
         200: standardResponseSchema,
       },
