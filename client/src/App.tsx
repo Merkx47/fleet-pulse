@@ -2,6 +2,7 @@ import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/hooks/use-theme";
 import { useUser } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import NotFound from "@/pages/not-found";
@@ -12,11 +13,12 @@ import RegisterPage from "@/pages/register";
 
 // Dashboard
 import DashboardHome from "@/pages/dashboard";
+import DashboardVehicles from "@/pages/dashboard/vehicles";
+import DashboardSettings from "@/pages/dashboard/settings";
+import DashboardMap from "@/pages/dashboard/map";
 
 // Admin
 import AdminUsersPage from "@/pages/admin/users";
-import UserDetailsPage from "@/pages/admin/user-details";
-import VehicleFormPage from "@/pages/admin/vehicle-form";
 
 function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
   const { data: user, isLoading } = useUser();
@@ -54,16 +56,19 @@ function Router() {
       <Route path="/admin/users">
         {() => <ProtectedRoute component={AdminUsersPage} adminOnly />}
       </Route>
-      <Route path="/admin/users/:id">
-        {() => <ProtectedRoute component={UserDetailsPage} adminOnly />}
-      </Route>
-      <Route path="/admin/users/:id/vehicles/new">
-        {() => <ProtectedRoute component={VehicleFormPage} adminOnly />}
-      </Route>
 
       {/* User Routes */}
       <Route path="/dashboard">
         {() => <ProtectedRoute component={DashboardHome} />}
+      </Route>
+      <Route path="/dashboard/vehicles">
+        {() => <ProtectedRoute component={DashboardVehicles} />}
+      </Route>
+      <Route path="/dashboard/settings">
+        {() => <ProtectedRoute component={DashboardSettings} />}
+      </Route>
+      <Route path="/dashboard/map">
+        {() => <ProtectedRoute component={DashboardMap} />}
       </Route>
 
       {/* Redirect root based on auth is handled in login/hooks, defaulting to login */}
@@ -79,8 +84,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <ThemeProvider>
+        <Router />
+        <Toaster />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

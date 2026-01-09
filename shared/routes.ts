@@ -18,27 +18,38 @@ export const errorSchemas = {
   }),
 };
 
-// API Contract
+// Standard response from FastAPI
+export const standardResponseSchema = z.object({
+  status: z.string(),
+  message: z.string(),
+  data: z.any().optional(),
+});
+
+// API Contract - proxied through local /api/* to FastAPI backend
 export const api = {
   auth: {
     login: {
       method: 'POST' as const,
       path: '/api/login',
       input: z.object({
-        username: z.string().email(),
+        email: z.string().email(),
         password: z.string(),
       }),
       responses: {
-        200: z.custom<typeof users.$inferSelect>(),
+        200: standardResponseSchema,
         401: errorSchemas.unauthorized,
       },
     },
     register: {
       method: 'POST' as const,
       path: '/api/register',
-      input: insertUserSchema,
+      input: z.object({
+        email: z.string().email(),
+        password: z.string(),
+        full_name: z.string(),
+      }),
       responses: {
-        201: z.custom<typeof users.$inferSelect>(),
+        200: standardResponseSchema,
         400: errorSchemas.validation,
       },
     },
@@ -46,52 +57,82 @@ export const api = {
       method: 'POST' as const,
       path: '/api/logout',
       responses: {
-        200: z.void(),
+        200: standardResponseSchema,
       },
     },
     user: {
       method: 'GET' as const,
-      path: '/api/user',
+      path: '/api/me',
       responses: {
-        200: z.custom<typeof users.$inferSelect>(),
+        200: standardResponseSchema,
         401: errorSchemas.unauthorized,
       },
     },
   },
   admin: {
     users: {
-      list: {
-        method: 'GET' as const,
-        path: '/api/admin/users',
-        responses: {
-          200: z.array(z.custom<typeof users.$inferSelect>()),
-          403: errorSchemas.unauthorized,
-        },
-      },
       get: {
         method: 'GET' as const,
-        path: '/api/admin/users/:id',
+        path: '/api/admin/user/:email',
         responses: {
-          200: z.custom<typeof users.$inferSelect>(),
+          200: standardResponseSchema,
           404: errorSchemas.notFound,
+        },
+      },
+      getVehicles: {
+        method: 'GET' as const,
+        path: '/api/admin/user/:email/vehicles',
+        responses: {
+          200: standardResponseSchema,
         },
       },
       resetPassword: {
         method: 'POST' as const,
-        path: '/api/admin/users/:id/reset-password',
-        input: z.object({ password: z.string() }),
+        path: '/api/admin/reset-password',
+        input: z.object({
+          email: z.string().email(),
+          new_password: z.string(),
+        }),
         responses: {
-          200: z.void(),
+          200: standardResponseSchema,
         },
       },
       registerVehicle: {
         method: 'POST' as const,
-        path: '/api/admin/users/:id/vehicles',
-        input: insertVehicleSchema.omit({ userId: true }), // userId comes from param
+        path: '/api/admin/register-vehicle',
+        input: z.object({
+          user_id: z.number(),
+          sensor_imei: z.string(),
+          vehicle_vin: z.string(),
+          brand: z.string(),
+          model: z.string(),
+          year: z.number(),
+          color: z.string(),
+          plate_number: z.string(),
+          fuel_type: z.string(),
+          transmission: z.string(),
+        }),
         responses: {
-          201: z.custom<typeof vehicles.$inferSelect>(),
+          200: standardResponseSchema,
         },
-      }
+      },
+      updateVehicle: {
+        method: 'PUT' as const,
+        path: '/api/admin/vehicle/:vehicle_id',
+        input: z.object({
+          brand: z.string().optional(),
+          model: z.string().optional(),
+          year: z.number().optional(),
+          color: z.string().optional(),
+          plate_number: z.string().optional(),
+          fuel_type: z.string().optional(),
+          transmission: z.string().optional(),
+          is_active: z.boolean().optional(),
+        }),
+        responses: {
+          200: standardResponseSchema,
+        },
+      },
     },
   },
   vehicles: {
@@ -99,36 +140,22 @@ export const api = {
       method: 'GET' as const,
       path: '/api/vehicles',
       responses: {
-        200: z.array(z.custom<typeof vehicles.$inferSelect>()),
+        200: standardResponseSchema,
       },
     },
-    get: {
+    getData: {
       method: 'GET' as const,
-      path: '/api/vehicles/:id',
+      path: '/api/vehicle/:vehicle_sensor_imei/data',
       responses: {
-        200: z.custom<typeof vehicles.$inferSelect>(),
+        200: standardResponseSchema,
         404: errorSchemas.notFound,
       },
     },
-    update: {
-      method: 'PUT' as const,
-      path: '/api/vehicles/:id',
-      input: insertVehicleSchema.partial(),
-      responses: {
-        200: z.custom<typeof vehicles.$inferSelect>(),
-        404: errorSchemas.notFound,
-      },
-    },
-    // Simulation endpoint
-    updateTelemetry: {
+    sync: {
       method: 'POST' as const,
-      path: '/api/vehicles/:id/telemetry',
-      input: z.object({
-        lat: z.number(),
-        lng: z.number(),
-      }),
+      path: '/api/sync',
       responses: {
-        200: z.custom<typeof vehicles.$inferSelect>(),
+        200: standardResponseSchema,
       },
     },
   },
@@ -145,3 +172,7 @@ export function buildUrl(path: string, params?: Record<string, string | number>)
   }
   return url;
 }
+
+// Type exports for auth
+export type LoginRequest = z.infer<typeof api.auth.login.input>;
+export type RegisterRequest = z.infer<typeof api.auth.register.input>;

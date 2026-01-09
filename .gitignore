@@ -4,3 +4,13 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Environment files
+.env
+.env.*
+client/.env
+client/.env.*
+
+# Claude folder
+.claude/
+.local/

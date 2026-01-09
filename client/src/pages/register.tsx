@@ -1,6 +1,5 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 import { useRegister } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -10,9 +9,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Link } from "wouter";
 import { Loader2, Truck } from "lucide-react";
 
-// Extend schema for confirm password
-const registerSchema = insertUserSchema.extend({
-  confirmPassword: z.string()
+// Schema matching FastAPI backend
+const registerSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  full_name: z.string().min(1, { message: "Full name is required" }),
+  confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -20,20 +22,18 @@ const registerSchema = insertUserSchema.extend({
 
 export default function RegisterPage() {
   const { mutate: register, isPending, error } = useRegister();
-  
+
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
       confirmPassword: "",
-      fullName: "",
-      role: "user",
+      full_name: "",
     },
   });
 
   function onSubmit(values: z.infer<typeof registerSchema>) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { confirmPassword, ...data } = values;
     register(data);
   }
@@ -59,7 +59,7 @@ export default function RegisterPage() {
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
-                  name="fullName"
+                  name="full_name"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
@@ -70,15 +70,15 @@ export default function RegisterPage() {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
-                  name="username"
+                  name="email"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="name@company.com" {...field} />
+                        <Input type="email" placeholder="name@company.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

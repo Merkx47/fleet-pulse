@@ -2,25 +2,78 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, type LoginRequest, type RegisterRequest } from "@shared/routes";
 import { useLocation } from "wouter";
 
-// GET /api/user - Check current session
+// Token storage helpers
+const TOKEN_KEY = "fleetpulse_token";
+const USER_KEY = "fleetpulse_user";
+
+export function getToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+}
+
+export function getStoredUser(): any | null {
+  const user = localStorage.getItem(USER_KEY);
+  return user ? JSON.parse(user) : null;
+}
+
+export function setStoredUser(user: any): void {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+// Helper to make authenticated requests
+export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+  const token = getToken();
+  const headers: HeadersInit = {
+    ...options.headers,
+  };
+
+  if (token) {
+    (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+  }
+
+  return fetch(url, { ...options, headers });
+}
+
+// GET /me - Check current session
 export function useUser() {
   return useQuery({
     queryKey: [api.auth.user.path],
     queryFn: async () => {
-      const res = await fetch(api.auth.user.path);
-      if (res.status === 401) return null;
+      const token = getToken();
+      if (!token) return null;
+
+      const res = await authFetch(api.auth.user.path);
+      if (res.status === 401) {
+        clearToken();
+        return null;
+      }
       if (!res.ok) throw new Error("Failed to fetch user");
-      return api.auth.user.responses[200].parse(await res.json());
+
+      const response = await res.json();
+      if (response.data) {
+        setStoredUser(response.data);
+        return response.data;
+      }
+      return response;
     },
     retry: false,
+    initialData: getStoredUser,
   });
 }
 
-// POST /api/login
+// POST /login
 export function useLogin() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  
+
   return useMutation({
     mutationFn: async (data: LoginRequest) => {
       const res = await fetch(api.auth.login.path, {
@@ -29,15 +82,30 @@ export function useLogin() {
         body: JSON.stringify(data),
       });
 
-      if (!res.ok) {
-        if (res.status === 401) throw new Error("Invalid username or password");
-        throw new Error("Login failed");
+      const response = await res.json();
+
+      // Handle API error responses (responseCode !== "00" means error)
+      if (!res.ok || response.responseCode !== "00") {
+        throw new Error(response.responseMessage || response.message || "Invalid email or password");
       }
-      return api.auth.login.responses[200].parse(await res.json());
+
+      return response;
     },
-    onSuccess: (user) => {
-      queryClient.setQueryData([api.auth.user.path], user);
-      if (user.role === 'admin') {
+    onSuccess: (response) => {
+      // Store token from response
+      if (response.data?.access_token) {
+        setToken(response.data.access_token);
+      }
+
+      // Store user data - FastAPI returns employee object
+      const user = response.data?.employee || response.data?.user || response.data;
+      if (user) {
+        setStoredUser(user);
+        queryClient.setQueryData([api.auth.user.path], user);
+      }
+
+      // Redirect based on role (admin check based on email or role field if exists)
+      if (user?.role === 'admin') {
         setLocation("/admin/users");
       } else {
         setLocation("/dashboard");
@@ -46,7 +114,7 @@ export function useLogin() {
   });
 }
 
-// POST /api/register
+// POST /register
 export function useRegister() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -60,35 +128,53 @@ export function useRegister() {
         body: JSON.stringify(validated),
       });
 
-      if (!res.ok) {
-        if (res.status === 400) {
-          const error = await res.json();
-          throw new Error(error.message || "Registration failed");
-        }
-        throw new Error("Registration failed");
+      const response = await res.json();
+
+      // Handle API error responses
+      if (!res.ok || response.responseCode !== "00") {
+        throw new Error(response.responseMessage || response.message || "Registration failed");
       }
-      return api.auth.register.responses[201].parse(await res.json());
+
+      return response;
     },
-    onSuccess: (user) => {
-      queryClient.setQueryData([api.auth.user.path], user);
+    onSuccess: (response) => {
+      // Store token if provided
+      if (response.data?.access_token) {
+        setToken(response.data.access_token);
+      }
+
+      const user = response.data?.user || response.data;
+      if (user) {
+        setStoredUser(user);
+        queryClient.setQueryData([api.auth.user.path], user);
+      }
+
       setLocation("/dashboard");
     },
   });
 }
 
-// POST /api/logout
+// POST /logout
 export function useLogout() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
   return useMutation({
     mutationFn: async () => {
-      const res = await fetch(api.auth.logout.path, {
+      const res = await authFetch(api.auth.logout.path, {
         method: api.auth.logout.method,
       });
-      if (!res.ok) throw new Error("Logout failed");
+      // Even if logout fails on server, clear local state
+      return res.ok;
     },
     onSuccess: () => {
+      clearToken();
+      queryClient.setQueryData([api.auth.user.path], null);
+      setLocation("/login");
+    },
+    onError: () => {
+      // Clear local state even on error
+      clearToken();
       queryClient.setQueryData([api.auth.user.path], null);
       setLocation("/login");
     },
