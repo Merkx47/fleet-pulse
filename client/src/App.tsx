@@ -15,7 +15,7 @@ import RegisterPage from "@/pages/register";
 import DashboardHome from "@/pages/dashboard";
 import DashboardVehicles from "@/pages/dashboard/vehicles";
 import DashboardSettings from "@/pages/dashboard/settings";
-import DashboardMap from "@/pages/dashboard/map";
+import VehicleDetailPage from "@/pages/dashboard/vehicle-detail";
 
 // Admin
 import AdminUsersPage from "@/pages/admin/users";
@@ -67,8 +67,8 @@ function Router() {
       <Route path="/dashboard/settings">
         {() => <ProtectedRoute component={DashboardSettings} />}
       </Route>
-      <Route path="/dashboard/map">
-        {() => <ProtectedRoute component={DashboardMap} />}
+      <Route path="/dashboard/vehicle/:imei">
+        {() => <ProtectedRoute component={VehicleDetailPage} />}
       </Route>
 
       {/* Redirect root based on auth is handled in login/hooks, defaulting to login */}

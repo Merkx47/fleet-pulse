@@ -1,10 +1,8 @@
 import { z } from 'zod';
 import { insertUserSchema, insertVehicleSchema, users, vehicles } from './schema';
 
-// API Base URL - use Render backend directly for deployed version
-const API_BASE = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-  ? 'https://fleetpulse-io7s.onrender.com'
-  : '';
+// API Base URL - always use Render backend directly
+const API_BASE = 'https://fleetpulse-io7s.onrender.com';
 
 // Shared Error Schemas
 export const errorSchemas = {

@@ -3,7 +3,6 @@ import { useUser, useLogout } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import {
   LayoutDashboard,
-  Map as MapIcon,
   Users,
   Settings,
   LogOut,
@@ -34,7 +33,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       ]
     : [
         { href: "/dashboard", icon: LayoutDashboard, label: "Overview" },
-        { href: "/dashboard/map", icon: MapIcon, label: "Live Map" },
         { href: "/dashboard/vehicles", icon: Truck, label: "Vehicles" },
         { href: "/dashboard/settings", icon: Settings, label: "Settings" },
       ];
